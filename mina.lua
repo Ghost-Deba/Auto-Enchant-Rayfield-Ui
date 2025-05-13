@@ -37,17 +37,8 @@ if not Window then return end
 
 -- البيانات الأساسية
 local enchants = {
-    "Magic Ores",
-    "Incredible Damage",
-    "Deadly Damage++",
-    "Deadly Damage",
-    "More Damage",
-    "Light Damage",
-    "Incredible Luck",
-    "Mighty Luck++",
-    "Mighty Luck",
-    "Considerable Luck",
-    "Abnormal Speed"
+    "Magic Ores", "Incredible Damage", "Deadly Damage++", "Deadly Damage", "More Damage", "Light Damage",
+    "Incredible Luck", "Mighty Luck++", "Mighty Luck", "Considerable Luck", "Abnormal Speed"
 }
 
 local pickaxes = {
@@ -77,7 +68,7 @@ local current = {
 -- إنشاء واجهة المستخدم
 local tab = Window:CreateTab("الإنشانت التلقائي", 4483362458)
 
--- قائمة الإنشانتات (مع معالجة الأخطاء)
+-- قائمة الإنشانتات
 local function createEnchantDropdown()
     local success, dropdown = pcall(function()
         return tab:CreateDropdown({
@@ -101,14 +92,12 @@ local function createEnchantDropdown()
     end
 end
 
--- قائمة البيكاكس (مع معالجة الأخطاء)
+-- قائمة البيكاكس
 local function createPickaxeDropdown()
     local success, dropdown = pcall(function()
         return tab:CreateDropdown({
             Name = "اختر البيكاكس",
-            Options = {"Iron Pickaxe", "Gold Pickaxe", "Diamond Pickaxe", "Gem Pickaxe", "God Pickaxe", 
-                      "Grassy Pickaxe", "Ice Pickaxe", "Void Pickaxe", "Hellfire Pickaxe", "Pirate's Pickaxe",
-                      "Coral Pickaxe", "Sharkee Pick", "Lava Pickaxe"},
+            Options = table.pack(table.unpack(enchants)),
             CurrentOption = current.pickaxe,
             Callback = function(option)
                 current.pickaxe = option
@@ -128,7 +117,7 @@ local function createPickaxeDropdown()
     end
 end
 
--- زر التشغيل التلقائي (مع معالجة الأخطاء)
+-- زر التشغيل التلقائي
 local function createAutoToggle()
     local success, toggle = pcall(function()
         return tab:CreateToggle({
@@ -162,37 +151,52 @@ local function createAutoToggle()
     end
 end
 
--- الدوال المساعدة
+-- الحصول على الإنشانت الحالي
 local function getCurrentEnchant()
     local success, result = pcall(function()
-        local gui = game:GetService("Players").LocalPlayer.PlayerGui
-        local screenGui = gui and gui:FindFirstChild("ScreenGui")
-        local enchant = screenGui and screenGui:FindFirstChild("Enchant")
-        local content = enchant and enchant:FindFirstChild("Content")
-        local slots = content and content:FindFirstChild("Slots")
-        local slot1 = slots and slots:FindFirstChild("1")
-        local name = slot1 and slot1:FindFirstChild("EnchantName")
-        return name and name.ContentText
+        local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+        if not gui then return nil end
+
+        local screenGui = gui:FindFirstChild("ScreenGui")
+        if not screenGui then return nil end
+
+        local enchant = screenGui:FindFirstChild("Enchant")
+        if not enchant then return nil end
+
+        local content = enchant:FindFirstChild("Content")
+        if not content then return nil end
+
+        local slots = content:FindFirstChild("Slots")
+        if not slots then return nil end
+
+        local slot1 = slots:FindFirstChild("1")
+        if not slot1 then return nil end
+
+        local name = slot1:FindFirstChild("EnchantName")
+        if not name then return nil end
+
+        return name.ContentText
     end)
     return success and result or nil
 end
 
+-- تنفيذ الإنشانت
 local function performEnchant()
     pcall(function()
         local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
         local enchantRemote = remotes and remotes:FindFirstChild("Enchant")
-        if enchantRemote then
+        if enchantRemote and typeof(current.pickaxeArgs) == "table" then
             enchantRemote:FireServer(unpack(current.pickaxeArgs))
         end
     end)
 end
 
--- الوظيفة الرئيسية
-local function startAutoEnchant()
+-- الوظيفة الرئيسية للإنشانت التلقائي
+function startAutoEnchant()
     spawn(function()
         while current.running do
             local found = getCurrentEnchant()
-            if found == current.enchant then
+            if found and found == current.enchant then
                 current.running = false
                 pcall(function()
                     Rayfield:Notify({
@@ -202,10 +206,10 @@ local function startAutoEnchant()
                     })
                 end)
                 break
-            else
+            elseif found then
                 performEnchant()
-                task.wait(0.5)
             end
+            task.wait(0.5)
         end
     end)
 end
@@ -215,7 +219,7 @@ createEnchantDropdown()
 createPickaxeDropdown()
 createAutoToggle()
 
--- الإشعار الأولي
+-- إشعار جاهزية
 pcall(function()
     Rayfield:Notify({
         Title = "جاهز للاستخدام",

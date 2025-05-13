@@ -65,117 +65,91 @@ local current = {
     running = false
 }
 
--- إنشاء واجهة المستخدم
+-- إنشاء الواجهة
 local tab = Window:CreateTab("الإنشانت التلقائي", 4483362458)
 
 -- قائمة الإنشانتات
 local function createEnchantDropdown()
-    local success, dropdown = pcall(function()
-        return tab:CreateDropdown({
+    local success, _ = pcall(function()
+        tab:CreateDropdown({
             Name = "اختر الإنشانت",
             Options = enchants,
             CurrentOption = current.enchant,
             Callback = function(option)
                 current.enchant = option
-                pcall(function()
-                    Rayfield:Notify({
-                        Title = "تم التحديد",
-                        Content = "إنشانت: "..option,
-                        Duration = 2
-                    })
-                end)
+                Rayfield:Notify({
+                    Title = "تم التحديد",
+                    Content = "إنشانت: "..option,
+                    Duration = 2
+                })
             end
         })
     end)
-    if not success then
-        warn("خطأ في إنشاء قائمة الإنشانت: "..tostring(dropdown))
-    end
 end
 
--- قائمة البيكاكس
+-- قائمة البيكاكس (إصلاح)
 local function createPickaxeDropdown()
-    local success, dropdown = pcall(function()
-        return tab:CreateDropdown({
+    local pickaxeNames = {}
+    for name, _ in pairs(pickaxes) do
+        table.insert(pickaxeNames, name)
+    end
+
+    local success, _ = pcall(function()
+        tab:CreateDropdown({
             Name = "اختر البيكاكس",
-            Options = table.pack(table.unpack(enchants)),
+            Options = pickaxeNames,
             CurrentOption = current.pickaxe,
             Callback = function(option)
                 current.pickaxe = option
                 current.pickaxeArgs = pickaxes[option] or {1, 1}
-                pcall(function()
-                    Rayfield:Notify({
-                        Title = "تم التحديد",
-                        Content = "بيكاكس: "..option,
-                        Duration = 2
-                    })
-                end)
+                Rayfield:Notify({
+                    Title = "تم التحديد",
+                    Content = "بيكاكس: "..option,
+                    Duration = 2
+                })
             end
         })
     end)
-    if not success then
-        warn("خطأ في إنشاء قائمة البيكاكس: "..tostring(dropdown))
-    end
 end
 
--- زر التشغيل التلقائي
+-- زر الإنشانت التلقائي
 local function createAutoToggle()
-    local success, toggle = pcall(function()
-        return tab:CreateToggle({
+    pcall(function()
+        tab:CreateToggle({
             Name = "الإنشانت التلقائي",
             CurrentValue = current.running,
             Callback = function(value)
                 current.running = value
                 if value then
-                    pcall(function()
-                        Rayfield:Notify({
-                            Title = "بدأ التشغيل",
-                            Content = "جاري البحث عن: "..current.enchant,
-                            Duration = 3
-                        })
-                    end)
+                    Rayfield:Notify({
+                        Title = "بدأ التشغيل",
+                        Content = "جاري البحث عن: "..current.enchant,
+                        Duration = 3
+                    })
                     startAutoEnchant()
                 else
-                    pcall(function()
-                        Rayfield:Notify({
-                            Title = "تم الإيقاف",
-                            Content = "توقف الإنشانت التلقائي",
-                            Duration = 2
-                        })
-                    end)
+                    Rayfield:Notify({
+                        Title = "تم الإيقاف",
+                        Content = "توقف الإنشانت التلقائي",
+                        Duration = 2
+                    })
                 end
             end
         })
     end)
-    if not success then
-        warn("خطأ في إنشاء زر التشغيل: "..tostring(toggle))
-    end
 end
 
--- الحصول على الإنشانت الحالي
+-- دالة لجلب الإنشانت الحالي
 local function getCurrentEnchant()
     local success, result = pcall(function()
         local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-        if not gui then return nil end
-
-        local screenGui = gui:FindFirstChild("ScreenGui")
-        if not screenGui then return nil end
-
-        local enchant = screenGui:FindFirstChild("Enchant")
-        if not enchant then return nil end
-
-        local content = enchant:FindFirstChild("Content")
-        if not content then return nil end
-
-        local slots = content:FindFirstChild("Slots")
-        if not slots then return nil end
-
-        local slot1 = slots:FindFirstChild("1")
-        if not slot1 then return nil end
-
-        local name = slot1:FindFirstChild("EnchantName")
-        if not name then return nil end
-
-        return name.ContentText
+        local enchantName = gui:FindFirstChild("ScreenGui")?
+            :FindFirstChild("Enchant")?
+            :FindFirstChild("Content")?
+            :FindFirstChild("Slots")?
+            :FindFirstChild("1")?
+            :FindFirstChild("EnchantName")
+        return enchantName and enchantName.ContentText and enchantName.ContentText:lower():gsub("%s+", "")
     end)
     return success and result or nil
 end
@@ -191,22 +165,20 @@ local function performEnchant()
     end)
 end
 
--- الوظيفة الرئيسية للإنشانت التلقائي
+-- تشغيل الإنشانت التلقائي
 function startAutoEnchant()
     spawn(function()
         while current.running do
             local found = getCurrentEnchant()
-            if found and found == current.enchant then
+            if found and found == current.enchant:lower():gsub("%s+", "") then
                 current.running = false
-                pcall(function()
-                    Rayfield:Notify({
-                        Title = "تم العثور عليه!",
-                        Content = "تم الحصول على: "..current.enchant,
-                        Duration = 5
-                    })
-                end)
+                Rayfield:Notify({
+                    Title = "تم العثور عليه!",
+                    Content = "تم الحصول على: "..current.enchant,
+                    Duration = 5
+                })
                 break
-            elseif found then
+            else
                 performEnchant()
             end
             task.wait(0.5)
@@ -220,10 +192,8 @@ createPickaxeDropdown()
 createAutoToggle()
 
 -- إشعار جاهزية
-pcall(function()
-    Rayfield:Notify({
-        Title = "جاهز للاستخدام",
-        Content = "اختر الإعدادات ثم اضغط على التشغيل",
-        Duration = 5
-    })
-end)
+Rayfield:Notify({
+    Title = "جاهز للاستخدام",
+    Content = "اختر الإعدادات ثم اضغط على التشغيل",
+    Duration = 5
+})
